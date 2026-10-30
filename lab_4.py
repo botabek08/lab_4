@@ -765,17 +765,6 @@ def run_a_star_unit_tests(plot=True):
                          for k, ok, P, grid in results])
 
 
-i=0
-import random
-while i<=99:
-    start=[random.randint(1,200),random.randint(1,200)]
-    end=[random.randint(1,200),random.randint(1,200)]
-
-    run_a_star_unit_tests()
-    i+=1
-
-
-
 # =====================================================================
 # PART 3 - MINIMUM TIME PLANNING WITH A TRAVERSABILITY MAP
 # =====================================================================
