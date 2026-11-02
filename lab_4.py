@@ -764,6 +764,12 @@ def run_a_star_unit_tests(plot=True):
         plot_grid_paths([(f"A* test {k}: {'pass' if ok else 'FAIL'}", grid, None, [P] if P else [])
                          for k, ok, P, grid in results])
 
+#Part 6 A* Analysis
+
+
+
+
+
 
 # =====================================================================
 # PART 3 - MINIMUM TIME PLANNING WITH A TRAVERSABILITY MAP
@@ -1118,53 +1124,52 @@ def random_free_cell(rng):
 # It takes about 1 minute: each plan takes up to ~1 s.
 # =====================================================================
 def run_density_analysis(plot=True):
+        denisties = [0.0, 0.05, 0.10, 0.15, 0.20]
+        mean_lengths = []
+        mean_times = []
+        failed = 0
+        rng = np.random.default_rng(0)
 
-    denisties=[0.0,0.05,0.10,0.15,0.20]
-    mean_lengths=[]
-    mean_times=[]
-    failed=0
-    rng= np.random.default_rng(0) 
+        for density in denisties:
+            grid = map_4.random_map(density, seed=0)
+            load_grid(grid)
 
-    for density in denisties:
-        grid=map_4.random(density,seed=0)
-        load_grid(grid)
+            length = []
+            times = []
 
-        length=[]
-        time=[]
+            for i in range(100):
 
-        for i in range(100):
+                # random starting and ending cell
+                X_0 = random_free_cell(rng)
+                X_d = random_free_cell(rng)
 
-            #random starting and ending cell
-            X_0=random_free_cell(rng)
-            X_d=random_free_cell(rng)
+                # time counter and A* planner
+                start_time = time.perf_counter()
+                P = A_star_planner(X_0, X_d, "distance")
+                end_time = time.perf_counter()
 
-            #time counter and A* planner
-            start_time = time.perf_counter()
-            P=A_star_planner(X_0,X_d,"distance")
-            end_time= time.perf_counter()
+                total_time = end_time - start_time
+                times.append(total_time)
 
-            total_time=end_time-start_time
-            time.append(total_time)
+                if P != None:
+                    one_length = (len(P) - 1) * CELL_SIZE_M
+                    length.append(one_length)
+                else:
+                    failed += 1
 
-            if P!=None:
-                one_length=(len(P)-1)*CELL_SIZE_M
-                length.append(one_length)
+            if length:
+                mean_lengths.append(sum(length) / len(length))
             else:
-                failed+=1
+                mean_lengths.append(float("nan"))
 
-            i+=1
-        mean_lengths.append(sum(length)/len(length))
-        mean_times.append(sum(time)/len(time))
+            mean_times.append(sum(times) / len(times))
 
+        print("Mean Lengths= ", mean_lengths)
+        print("Mean Times= ", mean_times)
+        print("Failed Attempts= ", failed)
 
-    print("Mean Lengths= ", mean_lengths)
-    print("Mean Times= ", mean_times)
-    print("Failed Attempts= ", failed)
-
-    if plot:
-        plot_density_results(denisties,mean_lengths,mean_times)
-
-
+        if plot:
+            plot_density_results(denisties, mean_lengths, mean_times)
 
 
 # =====================================================================
@@ -1206,6 +1211,182 @@ def plot_density_results(densities, mean_lengths, mean_times):
     a2.set_ylabel("mean planning time (s)")
     plt.tight_layout()
     plt.show()
+
+#map1 20% density
+def save_100_astar_pictures1():
+
+    import os
+    import matplotlib.pyplot as plt
+
+    folder = "A_star_100_PNG_20%_density"
+    os.makedirs(folder, exist_ok=True)
+
+    rng = np.random.default_rng(0)
+
+    # Select one of the five map densities
+    density = 0.20
+    grid = map_4.random_map(density, seed=0)
+    load_grid(grid)
+
+    lengths = []
+    times = []
+    failed = 0
+
+    for i in range(100):
+
+        # Random starting and ending positions
+        X_0 = random_free_cell(rng)
+        X_d = random_free_cell(rng)
+
+        # Run existing A* planner and measure time
+        start_time = time.perf_counter()
+        P = A_star_planner(X_0, X_d, "distance")
+        end_time = time.perf_counter()
+
+        planning_time = end_time - start_time
+        times.append(planning_time)
+
+        # Create picture
+        fig, ax = plt.subplots(figsize=(7, 7))
+
+        ax.imshow(grid.T, origin="lower",
+                  cmap="Greys", vmin=0, vmax=1)
+
+        if P is not None:
+
+            path_length = (len(P) - 1) * CELL_SIZE_M
+            lengths.append(path_length)
+
+            # Plot planned A* path
+            ax.plot([p[0] for p in P],
+                    [p[1] for p in P],
+                    "b-", label="A* Path")
+
+        else:
+            failed += 1
+            path_length = float("nan")
+
+        # Mark start and goal
+        ax.plot(X_0[0], X_0[1], "go", label="Start")
+        ax.plot(X_d[0], X_d[1], "ro", label="Goal")
+
+        ax.set_title(f"A* Plan {i + 1} - Density {density * 100:.0f}%")
+        ax.set_xlabel("X (grid cells)")
+        ax.set_ylabel("Y (grid cells)")
+        ax.set_xlim(-0.5, GRID_N - 0.5)
+        ax.set_ylim(-0.5, GRID_N - 0.5)
+        ax.legend()
+
+        # Display measurements on the figure
+        ax.text(0.02, 0.02,
+                f"Length: {path_length:.3f} m\n"
+                f"Planning Time: {planning_time:.6f} s",
+                transform=ax.transAxes,
+                bbox=dict(facecolor="white", alpha=0.8))
+
+        # Save PNG
+        filename = f"A_star_{i + 1:03d}.png"
+        plt.savefig(os.path.join(folder, filename), dpi=150)
+        plt.close(fig)
+
+        print(f"Saved {filename}")
+
+    print("Mean Length =", sum(lengths) / len(lengths)
+          if lengths else float("nan"))
+    print("Mean Time =", sum(times) / len(times))
+    print("Failed Attempts =", failed)
+
+
+
+#map2 15% density
+# Map 2 - 15% density
+def save_100_astar_pictures2():
+
+    import os
+    import matplotlib.pyplot as plt
+
+    # Create folder in Downloads
+    folder = os.path.expanduser("~/Downloads/A_star_100_PNG_15%_density")
+    os.makedirs(folder, exist_ok=True)
+
+    rng = np.random.default_rng(0)
+
+    # Select map density
+    density = 0.15
+    grid = map_4.random_map(density, seed=0)
+    load_grid(grid)
+
+    lengths = []
+    times = []
+    failed = 0
+
+    for i in range(100):
+
+        # Random starting and ending positions
+        X_0 = random_free_cell(rng)
+        X_d = random_free_cell(rng)
+
+        # Run existing A* planner and measure time
+        start_time = time.perf_counter()
+        P = A_star_planner(X_0, X_d, "distance")
+        end_time = time.perf_counter()
+
+        planning_time = end_time - start_time
+        times.append(planning_time)
+
+        # Create picture
+        fig, ax = plt.subplots(figsize=(7, 7))
+
+        ax.imshow(grid.T, origin="lower",
+                  cmap="Greys", vmin=0, vmax=1)
+
+        if P is not None:
+
+            path_length = (len(P) - 1) * CELL_SIZE_M
+            lengths.append(path_length)
+
+            # Plot planned A* path
+            ax.plot([p[0] for p in P],
+                    [p[1] for p in P],
+                    "b-", label="A* Path")
+
+        else:
+            failed += 1
+            path_length = float("nan")
+
+        # Mark start and goal
+        ax.plot(X_0[0], X_0[1], "go", label="Start")
+        ax.plot(X_d[0], X_d[1], "ro", label="Goal")
+
+        ax.set_title(f"A* Plan {i + 1} - Density {density * 100:.0f}%")
+        ax.set_xlabel("X (grid cells)")
+        ax.set_ylabel("Y (grid cells)")
+        ax.set_xlim(-0.5, GRID_N - 0.5)
+        ax.set_ylim(-0.5, GRID_N - 0.5)
+        ax.legend()
+
+        # Display measurements on the figure
+        ax.text(0.02, 0.02,
+                f"Length: {path_length:.3f} m\n"
+                f"Planning Time: {planning_time:.6f} s",
+                transform=ax.transAxes,
+                bbox=dict(facecolor="white", alpha=0.8))
+
+        # Save PNG inside the folder
+        filename = f"A_star_{i + 1:03d}.png"
+        filepath = os.path.join(folder, filename)
+
+        fig.savefig(filepath, dpi=150)
+        plt.close(fig)
+
+        print(f"Saved {filename}")
+
+    # Print results
+    print("Mean Length =", sum(lengths) / len(lengths)
+          if lengths else float("nan"))
+    print("Mean Time =", sum(times) / len(times))
+    print("Failed Attempts =", failed)
+    print("All 100 pictures saved in:", folder)
 
 
 # =====================================================================
@@ -1354,5 +1535,11 @@ if __name__ == "__main__":
     run_time_cost_unit_tests()
     print("\n=== Part 4: trajectory tracking ===")
     run_traj_tracker_unit_tests()
-    # print("\n=== Part 5: density analysis ===")   # slow: run it once for your report
-    # run_density_analysis()
+
+    print("\n=== Part 5: density analysis ===")   # slow: run it once for your report
+    run_density_analysis()
+    save_100_astar_pictures2()
+    save_100_astar_pictures1()
+
+
+
